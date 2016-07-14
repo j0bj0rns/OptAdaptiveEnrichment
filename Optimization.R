@@ -141,11 +141,11 @@ normalise=function(x){
 # The way in which the posterior must be computed depends on the stage 1 design, 
 # and therefore ComputePosterior is implemented as a generic function.
 ##
-ComputePosterior=function(design1,prior,...){
+ComputePosterior=function(design1,prior,sigma,...){
     UseMethod("ComputePosterior",design1)
 }
 
-ComputePosterior.Null=function(design1,prior){
+ComputePosterior.Null=function(design1,prior,sigma){
     ## Just return the prior as the posterior, since nothing has been observed with a Null design
     return(prior);
 }
@@ -378,7 +378,7 @@ Stage1EU.FullEnrichment=function(design1,dp,params){
         }
 
         ## Get normalising constant for the sample density given deltaS
-        normConst=sum(SampleDensity1(deltaS,dp$stepSize1*is,n,params$sigma));
+        normConst=sum(SampleDensity1(deltaS,dp$stepSize1*is,n1,params$sigma));
         
         eu1=eu1+priorProb*condEU/normConst;
     }
@@ -581,7 +581,7 @@ OptStage2EU=function(design1,dp,params,...) {
         }    
     }
 
-    return(Policy(eu2=opts$eu2,design2=opts$stage2Design)); 
+    return(list(eu2=opts$eu2,design2=opts$stage2Design)); 
 }
 
 ##
