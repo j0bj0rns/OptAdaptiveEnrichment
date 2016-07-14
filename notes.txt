@@ -1,0 +1,4 @@
+The code requires the package mvtnorm, so "library(mvtnorm)" needs to be run.
+
+Run "source("sourceAll.R")" to source all files.
+
