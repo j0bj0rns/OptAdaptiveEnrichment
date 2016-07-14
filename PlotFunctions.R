@@ -1,15 +1,6 @@
 ## PlotFunctions
 ## Contains functions for plotting the results of the optimization.
 
-PlotStage2EU=function(decisionMaker,design1,stage2Designs,prior,params,...){
-    UseMethod("PlotStage2EU",design1);
-}
-
-## Generic function for Null first stage design.
-PlotStage2EU.Null=function(deltaS,deltaSC,design1,design2,params){
-    
-}
-
 ## Plot the expected utility of stage 2, given a fixed stage 1 design.
 PlotStage2EU=function(decisionMaker,design1,stage2Designs,prior,params,...){
     
