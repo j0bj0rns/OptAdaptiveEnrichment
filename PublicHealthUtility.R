@@ -130,16 +130,17 @@ Integrand_IRF=function(zS2,cF,xi2,lam,lam2,mS,mSC,b){
 }
 
 IRF=function(a,cF,xi2,lam,lam2,mS,mSC,b){
-  return(integrate(Integrand_IRF,lower=a,upper=Inf,cF=cF,xi2=xi2,lam=lam,lam2=lam2,mS=mS,mSC=mSC,b=b)$value)
+  return(integrate(Integrand_IRF,lower=a,upper=Inf,rel.tol=.Machine$double.eps^0.5,cF=cF,xi2=xi2,lam=lam,lam2=lam2,mS=mS,mSC=mSC,b=b)$value)
 }
 
 ########################################
 ## Power for rejecting exactly HS     ##
 ########################################
+
 #Note that the integrand for the Integral IRSRF is the same as the integrand for IRF! Therefore no separate Integrand_IRSRF function is needed.
 IRSRF=function(a,cF,xi2,lam,lam2,mS,mSC,b,cS){
   m=pmax(cS,a);
-  return(integrate(Integrand_IRF,lower=m,upper=Inf,cF=cF,xi2=xi2,lam=lam,lam2=lam2,mS=mS,mSC=mSC,b=b)$value)
+  return(integrate(Integrand_IRF,lower=m,upper=Inf,rel.tol=.Machine$double.eps^0.5,cF=cF,xi2=xi2,lam=lam,lam2=lam2,mS=mS,mSC=mSC,b=b)$value)
 }
 
 #Note that the Integral IRS can be evaluated directly, allowing to calculate IRFCRS=IRS-IRSRF with only one call of integrate()
