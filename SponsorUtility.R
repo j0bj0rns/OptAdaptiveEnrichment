@@ -156,28 +156,97 @@ SUtility.PartialEnrichment.PartialEnrichment=function(deltaS,deltaSC,design1,des
 ##Integrals for the HF part of the utility##
 ############################################
 
+IntegrandS1RF=function(zS2,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
+  g=g(zS2,cF,xi2,lam,lam2);
+  k=k(zS2,DeltaF1,n1,n2,lam,lam2,muF,sigma);
+  return(dnorm(zS2-mS)*(1-pnorm(pmax(b,g,k)-mSC)));
+}
+
+S1RF=function(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
+  res=integrate(IntegrandS1RF,lower=a,upper=Inf,rel.tol=.Machine$double.eps^0.5,b=b,mS=mS,mSC=mSC,xi2=xi2,DeltaF1=DeltaF1,n1=n1,n2=n2,lam=lam,lam2=lam2,cF=cF,muF=muF,sigma=sigma)
+  return((DeltaF1-muF)*res$value)
+}
+
+IntegrandS2RF=function(zS2,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
+  g=g(zS2,cF,xi2,lam,lam2);
+  k=k(zS2,DeltaF1,n1,n2,lam,lam2,muF,sigma);
+  return(zS2*dnorm(zS2-mS)*(1-pnorm(pmax(b,g,k)-mSC)));
+}
+
+IntegrandS2RF_abspos=function(zS2,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
+  g=g(zS2,cF,xi2,lam,lam2);
+  k=k(zS2,DeltaF1,n1,n2,lam,lam2,muF,sigma);
+  return(abs(zS2*dnorm(zS2-mS)*(1-pnorm(pmax(b,g,k)-mSC))));
+}
+
+IntegrandS2RF_absneg=function(zS2,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
+  g=g(zS2,cF,xi2,lam,lam2);
+  k=k(zS2,DeltaF1,n1,n2,lam,lam2,muF,sigma);
+  return(-abs(zS2*dnorm(zS2-mS)*(1-pnorm(pmax(b,g,k)-mSC))));
+}
+
+S2RF=function(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
+  res=tryCatch({
+    n2/(n1+n2)*zetaS2(lam,lam2,n2,sigma)*integrate(IntegrandS2RF,a,Inf,rel.tol=.Machine$double.eps^0.5,b=b,mS=mS,mSC=mSC,xi2=xi2,DeltaF1=DeltaF1,n1=n1,n2=n2,lam=lam,lam2=lam2,cF=cF,muF=muF,sigma=sigma)$value
+  }, error = function(err){
+    print(paste("Try to handle the follwing error:  ",err))
+    S2RF_abspos=n2/(n1+n2)*zetaS2(lam,lam2,n2,sigma)*integrate(IntegrandS2RF_abspos,a,Inf,rel.tol=.Machine$double.eps^0.9,b=b,mS=mS,mSC=mSC,xi2=xi2,DeltaF1=DeltaF1,n1=n1,n2=n2,lam=lam,lam2=lam2,cF=cF,muF=muF,sigma=sigma)$value
+    S2RF_absneg=n2/(n1+n2)*zetaS2(lam,lam2,n2,sigma)*integrate(IntegrandS2RF_absneg,a,Inf,rel.tol=.Machine$double.eps^0.9,b=b,mS=mS,mSC=mSC,xi2=xi2,DeltaF1=DeltaF1,n1=n1,n2=n2,lam=lam,lam2=lam2,cF=cF,muF=muF,sigma=sigma)$value
+    if(max(abs(S2RF_abspos),abs(S2RF_absneg))<10^(-6)){
+      print("Error handling was successful, integral equals to 0")
+      print(c(S2RF_abspos,S2RF_absneg))
+      res=0;
+    }
+    else{
+      print("Error handling unsuccessful")
+      print(c(S2RF_abspos,S2RF_absneg))
+      stop
+    }
+  }
+  )
+  return(res);
+}
+
 IntegrandS3RF=function(zSC2,a,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
   invg=invg(zSC2,cF,xi2,lam,lam2);
   invk=invk(zSC2,DeltaF1,n1,n2,lam,lam2,muF,sigma);
   return(zSC2*dnorm(zSC2-mSC)*(1-pnorm(pmax(a,invg,invk)-mS)));
 }
 
-IntegrandS1RFplusS2RF=function(zS2,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
-  g=g(zS2,cF,xi2,lam,lam2);
-  k=k(zS2,DeltaF1,n1,n2,lam,lam2,muF,sigma);
-  return(dnorm(zS2-mS)*(1-pnorm(pmax(b,g,k)-mSC))*(DeltaF1-muF+n2/(n1+n2)*zS2*zetaS2(lam,lam2,n2,sigma)));
+IntegrandS3RF_abspos=function(zSC2,a,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
+  invg=invg(zSC2,cF,xi2,lam,lam2);
+  invk=invk(zSC2,DeltaF1,n1,n2,lam,lam2,muF,sigma);
+  return(abs(zSC2*dnorm(zSC2-mSC)*(1-pnorm(pmax(a,invg,invk)-mS))));
 }
 
-S1RFplusS2RF=function(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
-  return(integrate(IntegrandS1RFplusS2RF,a,Inf,b=b,mS=mS,mSC=mSC,xi2=xi2,DeltaF1=DeltaF1,n1=n1,n2=n2,lam=lam,lam2=lam2,cF=cF,muF=muF,sigma=sigma)$value)
+IntegrandS3RF_absneg=function(zSC2,a,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
+  invg=invg(zSC2,cF,xi2,lam,lam2);
+  invk=invk(zSC2,DeltaF1,n1,n2,lam,lam2,muF,sigma);
+  return(-abs(zSC2*dnorm(zSC2-mSC)*(1-pnorm(pmax(a,invg,invk)-mS))));
 }
 
 S3RF=function(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
-  return(n2/(n1+n2)*zetaSC2(lam,lam2,n2,sigma)*integrate(IntegrandS3RF,b,Inf,a=a,mS=mS,mSC=mSC,xi2=xi2,DeltaF1=DeltaF1,n1=n1,n2=n2,lam=lam,lam2=lam2,cF=cF,muF=muF,sigma=sigma)$value)
+  tryCatch({
+    res=n2/(n1+n2)*zetaSC2(lam,lam2,n2,sigma)*integrate(IntegrandS3RF,b,Inf,rel.tol=.Machine$double.eps^0.5,a=a,mS=mS,mSC=mSC,xi2=xi2,DeltaF1=DeltaF1,n1=n1,n2=n2,lam=lam,lam2=lam2,cF=cF,muF=muF,sigma=sigma)$value;
+  }, error=function(err){
+    print(paste("Try to handle the follwing error:  ",err))
+    S3RF_abspos=n2/(n1+n2)*zetaSC2(lam,lam2,n2,sigma)*integrate(IntegrandS3RF_abspos,b,Inf,rel.tol=.Machine$double.eps^0.9,a=a,mS=mS,mSC=mSC,xi2=xi2,DeltaF1=DeltaF1,n1=n1,n2=n2,lam=lam,lam2=lam2,cF=cF,muF=muF,sigma=sigma)$value;
+    S3RF_absneg=n2/(n1+n2)*zetaSC2(lam,lam2,n2,sigma)*integrate(IntegrandS3RF_absneg,b,Inf,rel.tol=.Machine$double.eps^0.9,a=a,mS=mS,mSC=mSC,xi2=xi2,DeltaF1=DeltaF1,n1=n1,n2=n2,lam=lam,lam2=lam2,cF=cF,muF=muF,sigma=sigma)$value;
+    if(max(abs(S3RF_abspos),abs(S3RF_absneg))<10^(-6)){
+      print("Error handling was successful, integral equals to 0")
+      res=0;
+    } else {
+      print("Error handling unsuccessful")
+      print(c(abs(S3RF_abspos),abs(S3RF_absneg)))
+      stop
+    }
+  }
+  )
+  return(res)
 }
 
 SRF=function(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
-  return(S1RFplusS2RF(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma)+S3RF(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma))
+  return(S1RF(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma)+S2RF(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma)+S3RF(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma))
 }
 
 ############################################
@@ -189,13 +258,14 @@ SRF=function(a,b,mS,mSC,xi2,DeltaF1,n1,n2,lam,lam2,cF,muF,sigma){
 
 #Note: The following evaluation of can be done directly via calculation of an antiderivative
 #Should muS really be included in the integrand?
+
 IntegrandSRS=function(zS2,mS,DeltaS1,n1,n2,lam1,lam2,cS,muS,sigma){
   return(dnorm(zS2-mS)*(DeltaS1-muS+lam2*n2/(lam1*n1+lam2*n2)*sqrt(sigma^2/(lam2*n2))*zS2));
 }
 
 SRS=function(mS,kappa,DeltaS1,n1,n2,lam1,lam2,cS,muS,sigma){
   maxcSkappa=pmax(kappa,cS)
-  return(integrate(IntegrandSRS,maxcSkappa,Inf,mS=mS,DeltaS1=DeltaS1,n1=n1,n2=n2,lam1=lam1,lam2=lam2,cS=cS,muS=muS,sigma=sigma)$value);
+  return(integrate(IntegrandSRS,maxcSkappa,Inf,rel.tol=.Machine$double.eps^0.75,mS=mS,DeltaS1=DeltaS1,n1=n1,n2=n2,lam1=lam1,lam2=lam2,cS=cS,muS=muS,sigma=sigma)$value);
 }
 
 IntegrandSRFRS=function(zS2,mS,mSC,DeltaS1,cF,xi2,lam,lam1,lam2,n1,n2,b,muS,sigma){
@@ -205,7 +275,7 @@ IntegrandSRFRS=function(zS2,mS,mSC,DeltaS1,cF,xi2,lam,lam1,lam2,n1,n2,b,muS,sigm
 
 SRFRS=function(a,kappa,cS,mS,mSC,DeltaS1,cF,xi2,lam,lam1,lam2,n1,n2,b,muS,sigma){
   M=pmax(a,kappa,cS);
-  return(integrate(IntegrandSRFRS,M,Inf,mS=mS,mSC=mSC,DeltaS1=DeltaS1,cF=cF,xi2=xi2,lam=lam,lam1=lam1,lam2=lam2,n1=n1,n2=n2,b=b,muS=muS,sigma=sigma)$value)
+  return(integrate(IntegrandSRFRS,M,Inf,rel.tol=.Machine$double.eps^0.75,mS=mS,mSC=mSC,DeltaS1=DeltaS1,cF=cF,xi2=xi2,lam=lam,lam1=lam1,lam2=lam2,n1=n1,n2=n2,b=b,muS=muS,sigma=sigma)$value)
 }
 
 SRFCRS=function(a,kappa,cS,mS,mSC,DeltaS1,cF,xi2,lam,lam1,lam2,n1,n2,b,muS,sigma){
