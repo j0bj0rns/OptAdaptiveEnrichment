@@ -42,8 +42,9 @@ DeltaFHatTwoStages=function(design1,design2,zS1,zSC1,zS2,zSC2,lambda,sigma){
 ##
 
 ## Top level generic function.
-## There are a total of nine combinations for possible stage 1 and stage 2 designs,
-## since the Null, FullEnrichment and PartialEnrichment designs are available at each stage.
+## There are a total of six combinations for possible stage 1 and stage 2 designs,
+## since the Null and PartialEnrichment designs are available at the first stage,
+## and the Null, FullEnrichment and PartialEnrichment designs are available at the second stage.
 SUtility=function(deltaS,deltaSC,design1,design2,params,...){
     UseMethod("SUtility",design1);
 }
@@ -53,10 +54,15 @@ SUtility.Null=function(deltaS,deltaSC,design1,design2,params,...){
     UseMethod("SUtility.Null",design2);
 }
 
+## Method for Null first stage design and Null second stage design (i.e., no trial is performed, giving zero utility).
+SUtility.Null.Null=function(deltaS,deltaSC,design1,design2,params,zS2){
+    return(0);
+}
+
 ## Method for Null first stage design and FullEnrichment second stage design.
 SUtility.Null.FullEnrichment=function(deltaS,deltaSC,design1,design2,params,zS2){        
     deltaSHat=DeltaSHatOneStage(design2,zS2,params$sigma);    
-    psiS=PsiS(zS1=0,zS2,wS=0,z_ahalf=qnorm(1-params$alpha));
+    psiS=PsiS(zS1=0,zS2,wS=0,z_sig_level=qnorm(1-params$alpha));
    
     C=TrialCost(n1=0,n2=design2$nS,lambda1=0.5,lambda2=1,params);       
     U=params$r*params$N*params$lambda*psiS*pmax(deltaSHat-params$muS,0)-C;    
@@ -71,51 +77,29 @@ SUtility.Null.PartialEnrichment=function(deltaS,deltaSC,design1,design2,params,z
     deltaSHat=DeltaSHatOneStage(design2,zS2,params$sigma);
     deltaFHat=DeltaFHatOneStage(design2,zS2,zSC2,params$lambda,params$sigma);
 
-    psiF=PsiF(zS1=0,zS2,zSC1=0,zSC2,lambda1=0.5,lambda2,wS=0,wSC=0,wF=0,params$lambda,params$z_ahalf,params$z_etaS,params$z_etaSC);
-    psiS=PsiS(zS1=0,zS2,wS=0,params$z_ahalf);
+    psiF=PsiF(zS1=0,zS2,zSC1=0,zSC2,lambda1=0.5,lambda2,wS=0,wSC=0,wF=0,params$lambda,z_sig_level=qnorm(1-params$alpha/2),params$z_etaS,params$z_etaSC);
+    psiS=PsiS(zS1=0,zS2,wS=0,z_sig_level=qnorm(1-params$alpha/2));
     
     C=TrialCost(n1=0,n2,lambda1=0.5,lambda2,params);       
     U=params$r*params$N*(psiF*pmax(deltaFHat-params$muF,0)+params$lambda*psiS*(1-psiF)*pmax(deltaSHat-params$muS,0))-C;   
     return(U);
 }
 
-## Generic function for FullEnrichment first stage design.
-SUtility.FullEnrichment=function(deltaS,deltaSC,design1,design2,params,...){
-    UseMethod("SUtility.FullEnrichment",design2);
-}
-
-## Method for FullEnrichment first stage design and FullEnrichment second stage design.
-SUtility.FullEnrichment.FullEnrichment=function(deltaS,deltaSC,design1,design2,params,zS1,zS2){
-    deltaSHat=DeltaSHatTwoStages(design1,design2,zS1,zS2,params$sigma);
-    psiS=PsiS(zS1,zS2,params$wS,z_ahalf=qnorm(1-params$alpha));
-
-    C=TrialCost(n1=design1$nS,n2=design2$nS,lambda1=1,lambda2=1,params);       
-    U=params$r*params$N*params$lambda*psiS*pmax(deltaSHat-params$muS,0)-C;
-    return(U);
-}
-
-## Method for FullEnrichment first stage design and PartialEnrichment second stage design.
-## It is assumed that approval (and estimate) in the full population may only be based on zF2.
-SUtility.FullEnrichment.PartialEnrichment=function(deltaS,deltaSC,design1,design2,params,zS1,zS2,zSC2){
-    n2=design2$nS+design2$nSC;
-    lambda2=design2$nS/n2;
-
-    deltaSHat=DeltaSHatTwoStages(design1,design2,zS1,zS2,params$sigma);
-    deltaFHat=DeltaFHatOneStage(design2,zS2,zSC2,params$lambda,params$sigma);
-    
-    zF2=ZF(zS2,zSC2,params$lambda,lambda2);
-    psiF=InvNormCombTest(z1=0,z2=zF2,w=0,params$z_ahalf) & InvNormCombTest(zS1,zS2,params$wS,params$z_etaS) & InvNormCombTest(z1=0,z2=zSC2,w=0,params$z_etaSC);        
-    psiS=PsiS(zS1,zS2,params$wS,params$z_ahalf);
-    
-    C=TrialCost(n1=design1$nS,n2,lambda1=1,lambda2,params);       
-    U=params$r*params$N*(psiF*pmax(deltaFHat-params$muF,0)+params$lambda*psiS*(1-psiF)*pmax(deltaSHat-params$muS,0))-C;
-
-    return(U);
-}
-
 ## Generic function for PartialEnrichment first stage design.
 SUtility.PartialEnrichment=function(deltaS,deltaSC,design1,design2,params,...){
     UseMethod("SUtility.PartialEnrichment",design2);
+}
+
+## Method for PartialEnrichment first stage design and Null second stage design.
+## Null in the second stage corresponds to stopping for futility.
+## Hence, the utility only consists of the trial costs of the first stage design.
+SUtility.PartialEnrichment.Null=function(deltaS,deltaSC,design1,design2,params,zS1,zSC1,zS2){
+    n1=design1$nS+design1$nSC;
+    lambda1=design1$nS/n1;         
+    
+    C=TrialCost(n1,n2=0,lambda1,lambda2=0.5,params); ## Value of lambda2 does not matter since n2=0.
+    U=-C;    
+    return(U);
 }
 
 ## Method for PartialEnrichment first stage design and FullEnrichment second stage design.
@@ -127,7 +111,7 @@ SUtility.PartialEnrichment.FullEnrichment=function(deltaS,deltaSC,design1,design
     lambda1=design1$nS/n1;
 
     deltaSHat=DeltaSHatTwoStages(design1,design2,zS1,zS2,params$sigma);     
-    psiS=PsiS(zS1,zS2,params$wS,z_ahalf=qnorm(1-params$alpha));
+    psiS=PsiS(zS1,zS2,params$wS,z_sig_level=qnorm(1-params$alpha));
     
     C=TrialCost(n1,n2=design2$nS,lambda1,lambda2=1,params);       
     U=params$r*params$N*params$lambda*psiS*pmax(deltaSHat-params$muS,0)-C;
@@ -144,8 +128,8 @@ SUtility.PartialEnrichment.PartialEnrichment=function(deltaS,deltaSC,design1,des
     deltaSHat=DeltaSHatTwoStages(design1,design2,zS1,zS2,params$sigma);
     deltaFHat=DeltaFHatTwoStages(design1,design2,zS1,zSC1,zS2,zSC2,params$lambda,params$sigma);   
     
-    psiF=PsiF(zS1,zS2,zSC1,zSC2,lambda1,lambda2,params$wS,params$wSC,params$wF,params$lambda,params$z_ahalf,params$z_etaS,params$z_etaSC);
-    psiS=PsiS(zS1,zS2,params$wS,params$z_ahalf);
+    psiF=PsiF(zS1,zS2,zSC1,zSC2,lambda1,lambda2,params$wS,params$wSC,params$wF,params$lambda,z_sig_level=qnorm(1-params$alpha/2),params$z_etaS,params$z_etaSC);
+    psiS=PsiS(zS1,zS2,params$wS,z_sig_level=qnorm(1-params$alpha/2));
     C=TrialCost(n1,n2,lambda1,lambda2,params);
 
     U=params$r*params$N*(psiF*pmax(deltaFHat-params$muF,0)+params$lambda*psiS*(1-psiF)*pmax(deltaSHat-params$muS,0))-C;   
@@ -297,6 +281,11 @@ SUtilityInt.Null=function(deltaS,deltaSC,design1,design2,params,...){
     UseMethod("SUtilityInt.Null",design2);
 }
 
+## Method for Null first stage design and Null second stage design (i.e., no trial is performed, giving zero utility).
+SUtilityInt.Null.Null=function(deltaS,deltaSC,design1,design2,params){
+    return(0);
+}
+
 ## Method for Null first stage design and FullEnrichment second stage design.
 SUtilityInt.Null.FullEnrichment=function(deltaS,deltaSC,design1,design2,params){
     n1=0;
@@ -305,7 +294,7 @@ SUtilityInt.Null.FullEnrichment=function(deltaS,deltaSC,design1,design2,params){
     lambda2=1;
 
     mS=mS(deltaS,lambda2,n2,params$sigma);
-    cS=cS(z_ahalf=qnorm(1-params$alpha),wS=0,zS1=0);    
+    cS=cS(z_sig_level=qnorm(1-params$alpha),wS=0,zS1=0);    
     kappa=kappa(DeltaS1=0,n1,n2,lambda1,lambda2,params$muS,params$sigma);
 
     IRS=SRS(mS,kappa,DeltaS1=0,n1,n2,lambda1,lambda2,cS,params$muS,params$sigma);
@@ -325,70 +314,32 @@ SUtilityInt.Null.PartialEnrichment=function(deltaS,deltaSC,design1,design2,param
     
     a=a(params$z_etaS,wS=0,zS1=0);        
     b=b(params$z_etaSC,wSC=0,zSC1=0);
-    cS=cS(params$z_ahalf,wS=0,zS1=0);
-    cF=cF(params$z_ahalf,wF=0,zF1=0); 
+    cS=cS(z_sig_level=qnorm(1-params$alpha/2),wS=0,zS1=0);
+    cF=cF(z_sig_level=qnorm(1-params$alpha/2),wF=0,zF1=0); 
 
     xi2=Xi(params$lambda,lambda2);
-    kappa=kappa(DeltaS1=0,n1=0,n2,lam1=0.5,lambda2,params$muS,params$sigma);
+    kappa=kappa(DeltaS1=0,n1=0,n2,lam1=0,lambda2,params$muS,params$sigma);
                 
-    C=TrialCost(n1=0,n2,lambda1=0.5,lambda2,params);
-    U=params$r*params$N*(SRF(a,b,mS,mSC,xi2,DeltaF1=0,n1=0,n2,params$lambda,lambda2,cF,params$muF,params$sigma)+params$lambda*SRFCRS(a,kappa,cS,mS,mSC,DeltaS1=0,cF,xi2,params$lambda,lam1=0.5,lambda2,n1=0,n2,b,params$muS,params$sigma))-C;
-    return(U);
-}
-
-## Generic function for FullEnrichment first stage design.
-SUtilityInt.FullEnrichment=function(deltaS,deltaSC,design1,design2,params,...){
-    UseMethod("SUtilityInt.FullEnrichment",design2);
-}
-
-## Method for FullEnrichment first stage design and FullEnrichment second stage design
-## Only H_S is tested, so no alpha split needs to be done for this design.
-SUtilityInt.FullEnrichment.FullEnrichment=function(deltaS,deltaSC,design1,design2,params,zS1){
-    n1=design1$nS;
-    lambda1=1;
-    n2=design2$nS;
-    lambda2=1;
-
-    mS=mS(deltaS,lambda2,n2,params$sigma);
-    cS=cS(z_ahalf=qnorm(1-params$alpha),params$wS,zS1);
-    DeltaS1=DeltaS1(zS1,n1,n2,lambda1,lambda2,params$sigma);
-    kappa=kappa(DeltaS1,n1,n2,lambda1,lambda2,params$muS,params$sigma);
-
-    IRS=SRS(mS,kappa,DeltaS1,n1,n2,lambda1,lambda2,cS,params$muS,params$sigma);
-    
-    C=TrialCost(n1,n2,lambda1,lambda2,params);
-    U=params$r*params$N*params$lambda*IRS-C;
-    return(U);
-}
-
-## Method for FullEnrichment first stage design and PartialEnrichment second stage design.
-## It is assumed that approval in the full population may only be based on zF2.
-SUtilityInt.FullEnrichment.PartialEnrichment=function(deltaS,deltaSC,design1,design2,params,zS1){  
-    n2=design2$nS+design2$nSC;
-    lambda2=design2$nS/n2;
-    
-    mS=mS(deltaS,lambda2,n2,params$sigma);
-    mSC=mSC(deltaSC,lambda2,n2,params$sigma);   
-    
-    a=a(params$z_etaS,params$wS,zS1);        
-    b=b(params$z_etaSC,wSC=0,zSC1=0);
-    
-    cS=cS(params$z_ahalf,params$wS,zS1);
-    cF=cF(params$z_ahalf,wF=0,zF1=0);
-
-    DeltaS1=DeltaS1(zS1,n1=design1$nS,n2,lam1=1,lambda2,params$sigma);
-
-    xi2=Xi(params$lambda,lambda2);
-    kappa=kappa(DeltaS1,n1=design1$nS,n2,lam1=1,lambda2,params$muS,params$sigma);
-                
-    C=TrialCost(n1=design1$nS,n2,lambda1=1,lambda2,params);
-    U=params$r*params$N*(SRF(a,b,mS,mSC,xi2,DeltaF1=0,n1=0,n2,params$lambda,lambda2,cF,params$muF,params$sigma)+params$lambda*SRFCRS(a,kappa,cS,mS,mSC,DeltaS1,cF,xi2,params$lambda,lam1=1,lambda2,n1=design1$nS,n2,b,params$muS,params$sigma))-C;
+    C=TrialCost(n1=0,n2,lambda1=0,lambda2,params);
+    U=params$r*params$N*(SRF(a,b,mS,mSC,xi2,DeltaF1=0,n1=0,n2,params$lambda,lambda2,cF,params$muF,params$sigma)+params$lambda*SRFCRS(a,kappa,cS,mS,mSC,DeltaS1=0,cF,xi2,params$lambda,lam1=0,lambda2,n1=0,n2,b,params$muS,params$sigma))-C;
     return(U);
 }
 
 ## Generic function for PartialEnrichment first stage design.
 SUtilityInt.PartialEnrichment=function(deltaS,deltaSC,design1,design2,params,...){
     UseMethod("SUtilityInt.PartialEnrichment",design2);
+}
+
+## Method for PartialEnrichment first stage design and Null second stage design.
+## Null in the second stage corresponds to stopping for futility.
+## Hence, the utility only consists of the trial costs of the first stage design.
+SUtilityInt.PartialEnrichment.Null=function(deltaS,deltaSC,design1,design2,params,zS1,zSC1){
+    n1=design1$nS+design1$nSC;
+    lambda1=design1$nS/n1;   
+
+    C=TrialCost(n1,n2=0,lambda1,lambda2=0.5,params); ## Value of lambda2 does not matter since n2=0.
+    U=-C;    
+    return(U);
 }
 
 ## Method for PartialEnrichment first stage design and FullEnrichment second stage design.
@@ -402,7 +353,7 @@ SUtilityInt.PartialEnrichment.FullEnrichment=function(deltaS,deltaSC,design1,des
     lambda2=1;
 
     mS=mS(deltaS,lambda2,n2,params$sigma);
-    cS=cS(z_ahalf=qnorm(1-params$alpha),params$wS,zS1);
+    cS=cS(z_sig_level=qnorm(1-params$alpha),params$wS,zS1);
     DeltaS1=DeltaS1(zS1,n1,n2,lambda1,lambda2,params$sigma);
     kappa=kappa(DeltaS1,n1,n2,lambda1,lambda2,params$muS,params$sigma);
 
@@ -428,8 +379,8 @@ SUtilityInt.PartialEnrichment.PartialEnrichment=function(deltaS,deltaSC,design1,
     
     a=a(params$z_etaS,params$wS,zS1);        
     b=b(params$z_etaSC,params$wSC,zSC1);
-    cS=cS(params$z_ahalf,params$wS,zS1);
-    cF=cF(params$z_ahalf,params$wF,zF1);
+    cS=cS(z_sig_level=qnorm(1-params$alpha/2),params$wS,zS1);
+    cF=cF(z_sig_level=qnorm(1-params$alpha/2),params$wF,zF1);
 
     DeltaS1=DeltaS1(zS1,n1,n2,lambda1,lambda2,params$sigma);
     DeltaF1=DeltaF1(zS1,zSC1,n1,n2,lambda1,lambda2,params$lambda,params$sigma);

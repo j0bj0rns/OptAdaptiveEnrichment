@@ -7,7 +7,7 @@
 
 # z_etaS...z-value for the reduced level etaS, i.e. z_etaS=qnorm(1-etaS)
 # z_etaSC...z-value for the reduced level etaSC, i.e. z_etaS=qnorm(1-etaSC)
-# z_ahalf...z-value for corresponding to alpha/2, i.e. z_ahalf=qnorm(1-alpha/2)
+# z_sig_level...z-value for corresponding to a given significance level
 # wS...weight for the first stage data for HS
 # wSC...weight for the first stage complement data (data from first stage not belonging to S)
 # wF...weight for the first stage data for HF
@@ -59,21 +59,21 @@ ZF=function(zS,zSC,lambda,trialLambda){
 # PsiS. Test for HS, based on the first and second stage z-values zS1 and zS2.
 # Returns TRUE if the test rejects and FALSE otherwise.
 # wS = Weight for inverse normal combination.
-# z_ahalf= Z-value corresponding to a one-sided significance level of alpha / 2.
+# z_sig_level = Z-value corresponding to a one-sided significance level of alpha / 2.
 ##
-PsiS=function(zS1,zS2,wS,z_ahalf){
-    return(InvNormCombTest(zS1,zS2,wS,z_ahalf));
+PsiS=function(zS1,zS2,wS,z_sig_level){
+    return(InvNormCombTest(zS1,zS2,wS,z_sig_level));
 }
 
 ##
 # PsiF. Test for HF, based on the first and second stage data.
 # Returns TRUE if the test rejects and FALSE otherwise.
 ##
-PsiF=function(zS1,zS2,zSC1,zSC2,lambda1,lambda2,wS,wSC,wF,lambda,z_ahalf,z_etaS,z_etaSC){    
+PsiF=function(zS1,zS2,zSC1,zSC2,lambda1,lambda2,wS,wSC,wF,lambda,z_sig_level,z_etaS,z_etaSC){    
     zF1=ZF(zS1, zSC1, lambda, lambda1);
     zF2=ZF(zS2, zSC2, lambda, lambda2);
     
-    return(InvNormCombTest(zF1,zF2,wF,z_ahalf) &
+    return(InvNormCombTest(zF1,zF2,wF,z_sig_level) &
            InvNormCombTest(zS1,zS2,wS,z_etaS) &
            InvNormCombTest(zSC1,zSC2,wSC,z_etaSC));  
 }
@@ -99,13 +99,13 @@ b=function(z_etaSC,wSC,zSC1){
 }
 
 # Returns: The variable cF (for definition see manuscript)
-cF=function(z_ahalf,wF,zF1){
-    return((z_ahalf-sqrt(wF)*zF1)/sqrt(1-wF));
+cF=function(z_sig_level,wF,zF1){
+    return((z_sig_level-sqrt(wF)*zF1)/sqrt(1-wF));
 }
 
 # Returns: The variable cS (for definition see manuscript)
-cS=function(z_ahalf,wS,zS1){
-    return((z_ahalf-sqrt(wS)*zS1)/sqrt(1-wS));
+cS=function(z_sig_level,wS,zS1){
+    return((z_sig_level-sqrt(wS)*zS1)/sqrt(1-wS));
 }
 
 # Returns: The value zSC2 needed to reject HF as a function of zS1 (for details see manuscript)
