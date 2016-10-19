@@ -308,16 +308,12 @@ OptStage2EU=function(design1,dp,params,...) {
                 }    
             }
 
-            if (dp$stage2Opt=="Optim") {
-                ## Set start point for local optima search
-                start=(min(d$nS)+max(d$nS))/2;
-                
+            if (dp$stage2Opt=="Optim") {                                
                 ## Find optimal value of n2S and return the result
-                opt=optim(start,fn=f,method="L-BFGS-B",
-                    lower=min(d$nS),upper=max(d$nS),control=list(fnscale=-1));                 
-                
-                if(opt$value>opts$eu2){                
-                    opts=optimals(opt$value,FullEnrichment(opt$par[1]));
+                opt=optimize(f,interval=c(min(d$nS),max(d$nS)),maximum=TRUE);
+
+                if(opt$objective>opts$eu2){                
+                    opts=optimals(opt$objective,FullEnrichment(opt$maximum));
                 }
             }
         }
@@ -359,7 +355,7 @@ OptStage2EU=function(design1,dp,params,...) {
                 
                 ## Find optimal combination of n2S and n2SC and return the result
                 opt=optim(start,fn=f,method="L-BFGS-B",
-                    lower=c(min(d$nS),min(d$nSC)),upper=c(max(d$nS),max(d$nSC)),control=list(fnscale=-1));                 
+                   lower=c(min(d$nS),min(d$nSC)),upper=c(max(d$nS),max(d$nSC)),control=list(fnscale=-1));
                 
                 if(opt$value>opts$eu2){                
                     opts=optimals(opt$value,PartialEnrichment(opt$par[1],opt$par[2]));
